@@ -35,9 +35,9 @@ jobs:
       - name: npm install
         run: |
           npm install
-      - name: '运行 【惊喜】'
+      - name: '运行 【泡泡】'
         run: |
-          node ./jd_add/jd_small_home.js
+          node ./jd_add/jd_paopao.js
         env:
           JD_COOKIE: ${{ secrets.JD_COOKIE }}
           JD_DEBUG: ${{ secrets.JD_DEBUG }}
