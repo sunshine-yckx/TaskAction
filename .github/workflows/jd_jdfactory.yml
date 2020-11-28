@@ -30,7 +30,7 @@ jobs:
           npm install
       - name: '运行 【东东工厂】'
         run: |
-          node ./jd_add/jd_jdfactory.js
+          node ./jd/jd_jdfactory.js
         env:
           JD_COOKIE: ${{ secrets.JD_COOKIE }}
           JD_DEBUG: ${{ secrets.JD_DEBUG }}
