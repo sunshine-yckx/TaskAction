@@ -11,11 +11,12 @@ hostname = www.xiaodouzhuan.cn
 
 */
 const $ = new Env('聚看点')
-let drawcash = $.getdata('jukan_cash') || 30 //提现金额
-let wxname = $.getdata('jukan_name') || ""//微信真实名字，可以在双引号内填入
+const drawcash = $.getdata('jukan_cash') || "30" //提现金额
+const wxname = $.getdata('jukan_name') || ""//微信真实名字，可以在双引号内填入
 let CookieArr=[],BodyArr=[];
 let cookie = $.getdata('jukan_ck')
 let bodys = $.getdata('jukan_body')
+let signtimes = $.getdata('jukan_times')
 let UA = 'JuKanDian/5.6.5 (iPhone; iOS 14.2; Scale/3.00)'
 
 if ($.isNode()) {
@@ -86,30 +87,37 @@ if (typeof $request !== 'undefined') {
       bodyval = BodyArr[i]
       ID =  decodeURIComponent(bodyval).match(/"openid" : "\w+"/)
       apptoken = decodeURIComponent(bodyval).match(/"apptoken" : "\w+"/)
+      times = Date.parse(new Date())/1000
       $.index = i + 1;
       await sign();
       await getsign();
-      await Stimulate("17");
+      await stimulate();
+      await TimeBox();
    for(boxtype of [1,2]){
       await $.wait(1000);
       await BoxProfit(boxtype)
     }
       await userinfo();
-  if (curcash >= drawcash&&wxname){
+
+  if (curcash >= drawcash && wxname){
       await realname();
-      await Withdraw()
+      //await Withdraw() //实名未通过，强制提现，可取消此注释，不保证成功
    }
+   if (signtimes&&signtimes<5){
       await WelfareCash();
-      times = Date.parse(new Date())/1000
+   }
       bodys = [bodyval.replace(/time%22%20%3A%20%22\d+%22/, `time%22%20%3A%20%22${times}%22%2C%20`+'%22cateid%22%20%3A%203'),bodyval.replace(/time%22%20%3A%20%22\d+%22/, `time%22%20%3A%20%22${times+31000}%22%2C%20`+'%22cateid%22%20%3A%2053')]
  if(new Date().getTimezoneOffset() != '-480'){
     continue
    } else {
  for (readbodyVal of bodys){
-     await artList(readbodyVal)
-    }
+       await artList(readbodyVal)
+    }  
+   if (taskresult == 'R-ART-1002'){
+     $.desc += "\n"+sumnotify
+     $.msg($.name+" 昵称:"+userName, $.sub, $.desc)
+     }
    }
-   
   }
  } 
 })()
@@ -147,8 +155,10 @@ function getsign() {
      let get_sign = JSON.parse(data)
       //$.log(data)
      if (get_sign.ret == "ok"){
+       signtimes = get_sign.signDays
+      if(signtimes) $.setdata(signtimes, 'jukan_times')
          $.sub = `签到成功🎉`
-         $.desc = `签到收益: +${get_sign.todaySignProfit}${get_sign.todaySignProfitType}💰，明日 +${get_sign.tomorrowSignProfit}${get_sign.tomorrowSignProfitType} 已签到 ${get_sign.signDays} 天\n` ;
+         $.desc = `签到收益: +${get_sign.todaySignProfit}${get_sign.todaySignProfitType}💰，明日 +${get_sign.tomorrowSignProfit}${get_sign.tomorrowSignProfitType} 已签到 ${signtimes} 天\n` ;
            await signShare()
          }  
      else if (get_sign.rtn_code == "R-ART-0008"){
@@ -205,20 +215,44 @@ function WelfareCash() {
     })
   })
 }
+
+function TimeBox() {
+  return new Promise((resolve, reject) =>{
+   let boxurl =  {
+      url: `https://www.xiaodouzhuan.cn/jkd/account/openTimeBoxAccount.action`,
+      headers: {Cookie:cookieval,'User-Agent':UA},
+       body: bodyval
+      }
+   $.post(boxurl, async(error, resp, data) => {
+     //$.log(data+"\n")
+     let _timebox = JSON.parse(data)
+     if (_timebox.ret == "ok"){
+       $.log("定时宝箱开启成功，获得收益+"+_timebox.profit + "下次需"+_timebox.next_time+"分钟")
+       await $.wait(5000)
+       await  Stimulate(_timebox.advertPopup.position)
+         //$.log(_timebox.advertPopup.buttonText )
+         }  else {
+       $.log(_timebox.rtn_msg)
+     }
+       resolve()
+    })
+  })
+}
+
 function realname() {
   return new Promise((resolve, reject) =>{
    let realurl =  {
-      url: `https://www.xiaodouzhuan.cn/jkd/weixin20/userWithdraw/verifyIdentity.action?realname=${wxname}`,
-      headers: {Cookie:cookieval,'User-Agent':UA}
+      url: `https://www.xiaodouzhuan.cn/jkd/weixin20/userWithdraw/verifyIdentity.action?realname=%E8%81%82%E6%B5%B7%E6%9C%8B`,
+      headers: {Cookie:cookieval}
       }
    $.get(realurl, async(error, resp, data) => {
        let get_name = JSON.parse(data)
-      if (get_name.ret="ok"){
+      if (get_name.ret=="ok"){
        $.log("恭喜您，实名验证通过" + get_name.return_msg)
        await Withdraw()
-      } else {
+      } else  if(get_name.ret== "failed"){
          $.log("实名验证" + get_name.return_msg)
-         $.msg($.name,"提现实名认证失败")
+        // $.msg($.name,"提现实名认证失败")
       }
        resolve()
     })
@@ -253,11 +287,10 @@ function userinfo() {
        userName = get_info.userinfo.username
        sumcash = get_info.userinfo.infoMeSumCashItem.title+get_info.userinfo.infoMeSumCashItem.value
        curcash = get_info.userinfo.infoMeCurCashItem.title+get_info.userinfo.infoMeCurCashItem.value
-        gold = get_info.userinfo.infoMeGoldItem.title+": "+get_info.userinfo.infoMeGoldItem.value
+       gold = get_info.userinfo.infoMeGoldItem.title+": "+get_info.userinfo.infoMeGoldItem.value
     $.log("昵称:"+userName+"  "+gold +"\n"+sumcash + "/"+curcash )
      $.sub += " "+gold
      $.desc += sumcash + "/"+curcash 
-     $.msg($.name+" 昵称:"+userName, $.sub, $.desc+"\n")
      }
      resolve()
     })
@@ -312,7 +345,8 @@ function readTask(artid,arttype) {
    $.post(rewurl, async(error, resp, data) => {
      //$.log(data)
      if(resp.statusCode ==200){
-         await $.wait(31000) 
+        $.log("请等待30s\n")
+         await $.wait(30000) 
          await finishTask(artid,arttype)
        } else {
         $.log("阅读失败: "+data)
@@ -331,12 +365,38 @@ function finishTask(artid,arttype) {
       body: `jsondata={"appid":"xzwl","read_weal":0,"paytype":${arttype},"securitykey":"","channel":"iOS","psign":"92dea068b6c271161be05ed358b59932","appversioncode":"565","time":"${times}",${apptoken},"appversion":"5.6.5",${ID},"os":"iOS","artid":${artid},"accountType":"0","readmodel":"1"}`
       }
    $.post(finishurl, async(error, response, data) => {
-     $.log(data+"\n")
+     //$.log(data+"\n")
      let do_read = JSON.parse(data)
-          taskresult = do_read.rtn_code
+         taskresult = do_read.rtn_code
+         $.log(do_read.rtn_msg)
      if (do_read.ret == "ok"){
        $.log("获得收益: +"+do_read.profit +"\n")
-         }  
+         }  else if (arttype == 1 ){
+         sumnotify = do_read.rtn_msg
+        }
+       resolve()
+    })
+  })
+}
+
+
+function stimulate() {
+  return new Promise((resolve, reject) =>{
+   let Advurl =  {
+      url: `https://www.xiaodouzhuan.cn/jkd/newmobile/stimulateAdv.action`,
+      headers: {Cookie:cookieval,'User-Agent':UA},
+      body: `jsondata={"read_weal":"0","appid":"xzwl", "position" : "17","time" : "${times}", ${apptoken},"appversion":"5.6.5",${ID},"os":"iOS","channel":"iOS"}`
+      }
+   $.post(Advurl, async(error, resp, data) => {
+     //$.log(data+"\n")
+     let _Adv = JSON.parse(data)
+     if (_Adv.ret == "ok"&&_Adv.status==1){
+       $.log("视频"+ _Adv.videoType+"获得红包: +"+_Adv.rewardAmount+_Adv.rewardName)
+         await $.wait(1000)
+         await Stimulate("17")
+         }  else {
+       $.log("视频广告红包，"+ _Adv.message)
+     }
        resolve()
     })
   })
@@ -348,12 +408,12 @@ function Stimulate(position) {
    let stimurl =  {
       url: `https://www.xiaodouzhuan.cn/jkd/account/stimulateAdvAccount.action`,
       headers: {Cookie:cookieval,'User-Agent':UA},      
-      body: `jsondata={"read_weal":"0","appid":"xzwl", "position" : ${position},${apptoken},"appversion":"5.6.5",${ID},"os":"iOS","channel":"iOS"}`
+      body: `jsondata={"read_weal":"0","appid":"xzwl", "position" : ${position},"time" : "${times}", ${apptoken},"appversion":"5.6.5",${ID},"os":"iOS","channel":"iOS"}`
       }
    $.post(stimurl, async(error, response, data) => {
      //$.log(data+"\n")
      let do_stim = JSON.parse(data)
-     if ( do_stim.ret == "ok"){
+     if ( do_stim.ret == "ok"&&position !="17"){
           $.log( do_stim.profit_title+": +"+ do_stim.profit +"(以实际情况为准)")
          }  
        resolve()
@@ -374,7 +434,7 @@ function BoxProfit() {
        $.log("获得收益: +"+do_box.profit)
           position = do_box.advertPopup.position
           await Stimulate(position)
-          $.log(position)
+         // $.log(position)
          }  
        else if (do_box.rtn_code=='TAS-A-1'){
          $.log("计时金币"+do_box.rtn_msg)
@@ -387,10 +447,12 @@ function BoxProfit() {
 
 function invite() {
    let rewurl =  {
-      url: `https://www.xiaodouzhuan.cn/jkd/weixin20/member/receiveMonkeyXd.action?userid=fe0d318cdfbd4f8f9950ce67c5643eaa`,
-      headers: {Cookie:cookieval}
+      url: `http://a.app.qq.com/o/simple.jsp?pkgname=com.xiangzi.jukandian&ckey=CK1416436838701`,
+      headers: {Cookie:cookieval},
+      body: bodyval
       }
-   $.get(rewurl, (error, response, data) => {
+   $.get(rewurl, (error, resp, data) => {
+    //$.log(data)
   })
 }
 
