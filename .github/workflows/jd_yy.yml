@@ -37,8 +37,8 @@ jobs:
           npm install
       - name: '运行 【JOY】'
         run: |
-          cd ~/TaskAction/jd_add
-          node jd_crazyJoy.js
+          cd ~/TaskAction/jd
+          node jd_coin.js
         env:
           JD_COOKIE: ${{ secrets.JD_COOKIE }}
           JD_DEBUG: ${{ secrets.JD_DEBUG }}
