@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Checkout
         run: |
-          git clone -b master https://github.com/yangtingxiao/QuantumultX.git ~/QuantumultX
+          git clone -b master https://github.com/ddgksf2013/TaskAction.git ~/TaskAction
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -33,11 +33,11 @@ jobs:
           key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('package-lock.json') }} # 使用 package-lock.json 的 Hash 作为缓存的 key。也可以使用 package.json 代替
       - name: npm install
         run: |
-          cd ~/QuantumultX
+          cd ~/TaskAction
           npm install
       - name: '运行 【JOY】'
         run: |
-          cd ~/QuantumultX/scripts/jd
+          cd ~/TaskAction/jd_add
           node jd_crazyJoy.js
         env:
           JD_COOKIE: ${{ secrets.JD_COOKIE }}
